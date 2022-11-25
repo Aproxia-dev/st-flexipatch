@@ -104,6 +104,13 @@ static uint su_timeout = 200;
  */
 static unsigned int blinktimeout = 800;
 
+#if SMOOTH_BLINK_PATCH
+/*
+ * the rate at which the terminal updates while blinking
+ */
+static unsigned int rate = 60;
+#endif // SMOOTH_BLINK_PATCH
+
 /*
  * thickness of underline and bar cursors
  */

@@ -226,6 +226,9 @@ int borderpx;
 static Cursor cursor;
 static XColor xmousefg, xmousebg;
 #endif // SWAPMOUSE_PATCH
+#if SMOOTH_BLINK_PATCH
+static struct timespec lastblink;
+#endif
 
 #include "patch/x_include.c"
 
@@ -1836,6 +1839,10 @@ xdrawglyphfontspecs(const XftGlyphFontSpec *specs, Glyph base, int len, int x, i
 	#else
 	int winx = borderpx + x * win.cw, winy = borderpx + y * win.ch;
 	#endif // ANYSIZE_PATCH
+	#if SMOOTH_BLINK_PATCH
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	#endif // SMOOTH_BLINK_PATCH
 	int width = charlen * win.cw;
 	Color *fg, *bg, *temp, revfg, revbg, truefg, truebg;
 	XRenderColor colfg, colbg;
@@ -1930,8 +1937,26 @@ xdrawglyphfontspecs(const XftGlyphFontSpec *specs, Glyph base, int len, int x, i
 		#endif // SPOILER_PATCH
 	}
 
+	#if SMOOTH_BLINK_PATCH
+	if (base.mode & ATTR_BLINK) {
+		float t = MIN(MAX(TIMEDIFF(now, lastblink) / blinktimeout, 0), 1);
+		if (win.mode & MODE_BLINK) {
+			colfg.red   = dc.col[base.bg].color.red   + (int)((1 - t) * (dc.col[base.fg].color.red   - dc.col[base.bg].color.red));
+			colfg.green = dc.col[base.bg].color.green + (int)((1 - t) * (dc.col[base.fg].color.green - dc.col[base.bg].color.green));
+			colfg.blue  = dc.col[base.bg].color.blue  + (int)((1 - t) * (dc.col[base.fg].color.blue  - dc.col[base.bg].color.blue));
+		} else {
+			colfg.red   = dc.col[base.bg].color.red   + (int)(t * (dc.col[base.fg].color.red   - dc.col[base.bg].color.red));
+			colfg.green = dc.col[base.bg].color.green + (int)(t * (dc.col[base.fg].color.green - dc.col[base.bg].color.green));
+			colfg.blue  = dc.col[base.bg].color.blue  + (int)(t * (dc.col[base.fg].color.blue  - dc.col[base.bg].color.blue));
+		}
+		XftColorAllocValue(xw.dpy, xw.vis, xw.cmap, &colfg, &revfg);
+		fg = &revfg;
+		tsetdirtattr(ATTR_BLINK);
+	}
+	#else
 	if (base.mode & ATTR_BLINK && win.mode & MODE_BLINK)
 		fg = bg;
+	#endif // SMOOTH_BLINK_PATCH
 
 	if (base.mode & ATTR_INVISIBLE)
 		fg = bg;
@@ -3252,7 +3277,11 @@ run(void)
 	int w = win.w, h = win.h;
 	fd_set rfd;
 	int xfd = XConnectionNumber(xw.dpy), ttyfd, xev, drawing;
+	#if SMOOTH_BLINK_PATCH
+	struct timespec seltv, *tv, now, trigger;
+	#else
 	struct timespec seltv, *tv, now, lastblink, trigger;
+	#endif
 	double timeout;
 
 	/* Waiting for window mapping */
@@ -3371,6 +3400,17 @@ run(void)
 		if (blinktimeout && tattrset(ATTR_BLINK))
 		#endif // BLINKING_CURSOR_PATCH
 		{
+		#if SMOOTH_BLINK_PATCH
+			timeout -= TIMEDIFF(now, lastblink);
+			if (timeout <= 0) {
+				timeout = 1000 / rate;
+				tsetdirtattr(ATTR_BLINK);
+				if (-TIMEDIFF(lastblink, now) > blinktimeout) {
+					win.mode ^= MODE_BLINK;
+					lastblink = now;
+				}
+			}
+		#else
 			timeout = blinktimeout - TIMEDIFF(now, lastblink);
 			if (timeout <= 0) {
 				if (-timeout > blinktimeout) /* start visible */
@@ -3380,6 +3420,7 @@ run(void)
 				lastblink = now;
 				timeout = blinktimeout;
 			}
+		#endif // SMOOTH_BLINK_PATCH
 		}
 
 		#if VISUALBELL_1_PATCH

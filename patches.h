@@ -451,3 +451,10 @@
  * Depends on the XRESOURCES_PATCH.
  */
 #define XRESOURCES_RELOAD_PATCH 0
+
+/*   CUSTOM PATCHES   */
+
+/* This patch adds a smooth animation to blinking text and cursors
+ */
+
+#define SMOOTH_BLINK_PATCH 1
