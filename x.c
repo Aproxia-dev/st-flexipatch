@@ -27,6 +27,10 @@ char *argv0;
 #include <X11/Xcursor/Xcursor.h>
 #endif // THEMED_CURSOR_PATCH
 
+#if PASSWORD_CURSOR_PATCH
+#include <termios.h>
+#endif // PASSWORD_CURSOR_PATCH
+
 #if UNDERCURL_PATCH
 /* Undercurl slope types */
 enum undercurl_slope_type {
@@ -228,7 +232,11 @@ static XColor xmousefg, xmousebg;
 #endif // SWAPMOUSE_PATCH
 #if SMOOTH_BLINK_PATCH
 static struct timespec lastblink;
-#endif
+#endif // SMOOTH_BLINK_PATCH
+#if PASSWORD_CURSOR_PATCH
+static int ttyfd;
+static struct termios attrs;
+#endif // PASSWORD_CURSOR_PATCH
 
 #include "patch/x_include.c"
 
@@ -2547,13 +2555,33 @@ xdrawcursor(int cx, int cy, Glyph g, int ox, int oy, Glyph og)
 			drawcol = dc.col[g.bg];
 		#endif // DYNAMIC_CURSOR_COLOR_PATCH
 	}
+	
+	#if PASSWORD_CURSOR_PATCH
+	if (tcgetattr(ttyfd, &attrs) < 0)
+        	perror("stdin");
+	#endif // PASSWORD_CURSOR_PATCH
 
 	/* draw the new one */
 	if (IS_SET(MODE_FOCUSED)) {
+		#if PASSWORD_CURSOR_PATCH
+		if (!(attrs.c_lflag & ECHO) && (attrs.c_lflag & ICANON)) {
+			g.u = passwdcursor;
+			g.mode |= ATTR_WIDE;
+			g.bg = passwdcursorbg;
+			g.fg = passwdcursorfg;
+			if (passwdcursorblink >> 1) {
+				g.mode |= ATTR_BLINK;
+				xdrawglyph(g, cx, cy);
+			}
+			else if ((passwdcursorblink && !IS_SET(MODE_BLINK)) || !passwdcursorblink)
+				xdrawglyph(g, cx, cy);
+		} else {
+		#endif // PASSWORD_CURSOR_PATCH
 		switch (win.cursor) {
 		#if !BLINKING_CURSOR_PATCH
 		case 7: /* st extension */
 			g.u = 0x2603; /* snowman (U+2603) */
+			g.mode |= ATTR_WIDE;
 			/* FALLTHROUGH */
 		#endif // BLINKING_CURSOR_PATCH
 		case 0: /* Blinking block */
@@ -2611,9 +2639,11 @@ xdrawcursor(int cx, int cy, Glyph g, int ox, int oy, Glyph og)
 			/* FALLTHROUGH */
 		case 8: /* Steady st cursor */
 			g.u = stcursor;
+			g.mode |= ATTR_WIDE;
 			xdrawglyph(g, cx, cy);
 			break;
 		#endif // BLINKING_CURSOR_PATCH
+			}
 		}
 	} else {
 		XftDrawRect(xw.draw, &drawcol,
@@ -3276,7 +3306,11 @@ run(void)
 	XEvent ev;
 	int w = win.w, h = win.h;
 	fd_set rfd;
+	#if PASSWORD_CURSOR_PATCH
+	int xfd = XConnectionNumber(xw.dpy), xev, drawing;
+	#else
 	int xfd = XConnectionNumber(xw.dpy), ttyfd, xev, drawing;
+	#endif // PASSWORD_CURSOR_PATCH
 	#if SMOOTH_BLINK_PATCH
 	struct timespec seltv, *tv, now, trigger;
 	#else

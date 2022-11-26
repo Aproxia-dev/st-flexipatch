@@ -32,12 +32,12 @@
 /* This patch allows st to resize to any pixel size rather than snapping to character width/height.
  * https://st.suckless.org/patches/anysize/
  */
-#define ANYSIZE_PATCH 0
+#define ANYSIZE_PATCH 1
 
 /* A simple variant of the anysize patch that only changes the resize hints to allow the window to
  * be resized to any size.
  */
-#define ANYSIZE_SIMPLE_PATCH 1
+#define ANYSIZE_SIMPLE_PATCH 0
 
 /* Draws a background image in farbfeld format in place of the defaultbg color allowing for pseudo
  * transparency.
@@ -57,7 +57,7 @@
  *    https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_-ordered-by-the-final-character-lparen-s-rparen:CSI-Ps-SP-q.1D81
  * https://st.suckless.org/patches/blinking_cursor/
  */
-#define BLINKING_CURSOR_PATCH 0
+#define BLINKING_CURSOR_PATCH 1
 
 /* By default bold text is rendered with a bold font in the bright variant of the current color.
  * This patch makes bold text rendered simply as bold, leaving the color unaffected.
@@ -423,7 +423,7 @@
  * https://github.com/Dreomite/st/commit/e3b821dcb3511d60341dec35ee05a4a0abfef7f2
  * https://www.reddit.com/r/suckless/comments/jt90ai/update_support_for_proper_glyph_rendering_in_st/
  */
-#define WIDE_GLYPHS_PATCH 0
+#define WIDE_GLYPHS_PATCH 1
 
 /* There is a known issue that Google's Variable Fonts (VF) can end up with letter spacing
  * that is too wide in programs that use Xft, for example Inconsolata v3.000.
@@ -455,6 +455,11 @@
 /*   CUSTOM PATCHES   */
 
 /* This patch adds a smooth animation to blinking text and cursors
+ * Inspired by wezterm
  */
-
 #define SMOOTH_BLINK_PATCH 1
+
+/* This patch allows changing the cursor upon password input
+ * Inspired by wezterm
+ */
+#define PASSWORD_CURSOR_PATCH 1

@@ -255,6 +255,20 @@ static Rune stcursor = 0x2603; /* snowman (U+2603) */
 static unsigned int cursorshape = 6;
 #endif // BLINKING_CURSOR_PATCH
 
+#if PASSWORD_CURSOR_PATCH
+// static Rune passwdcursor = 0x1f512; /* Lock Emoji (U+1f512) */ /* !! THIS IS AN EMOJI, SMOOTH BLINK AND FG WILL NOT AFFECT IT !! */
+static Rune passwdcursor = 0xf023; /* nf-fa-lock (U+f023) */ /* This character is monochrome. FG and Smooth Blink do affect it. */
+static int passwdcursorblink = 2;
+/*
+ * Blinking Type
+ * 0 - Off
+ * 1 - Normal Blink
+ * 2 - Smooth Blink   (Requires SMOOTH_BLINK_PATCH)
+ */
+static unsigned int passwdcursorbg = 257;
+static unsigned int passwdcursorfg = 258;
+#endif // PASSWORD_CURSOR_PATCH
+
 /*
  * Default columns and rows numbers
  */
