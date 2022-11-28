@@ -218,7 +218,8 @@ static int focused = 0;
 
 static uint buttons; /* bit field of pressed buttons */
 #if BLINKING_CURSOR_PATCH
-static int cursorblinks = 0;
+static struct timespec cslastblink;
+static unsigned int blinkcs;
 #endif // BLINKING_CURSOR_PATCH
 #if VISUALBELL_1_PATCH
 static int bellon = 0;    /* visual bell status */
@@ -234,8 +235,8 @@ static XColor xmousefg, xmousebg;
 static struct timespec lastblink;
 #endif // SMOOTH_BLINK_PATCH
 #if PASSWORD_CURSOR_PATCH
+static unsigned int pwinput;
 static int ttyfd;
-static struct termios attrs;
 #endif // PASSWORD_CURSOR_PATCH
 
 #include "patch/x_include.c"
@@ -1959,7 +1960,6 @@ xdrawglyphfontspecs(const XftGlyphFontSpec *specs, Glyph base, int len, int x, i
 		}
 		XftColorAllocValue(xw.dpy, xw.vis, xw.cmap, &colfg, &revfg);
 		fg = &revfg;
-		tsetdirtattr(ATTR_BLINK);
 	}
 	#else
 	if (base.mode & ATTR_BLINK && win.mode & MODE_BLINK)
@@ -2484,9 +2484,17 @@ xdrawcursor(int cx, int cy, Glyph g, int ox, int oy, Glyph og)
 #endif // LIGATURES_PATCH
 {
 	Color drawcol;
-	#if DYNAMIC_CURSOR_COLOR_PATCH
+	#if DYNAMIC_CURSOR_COLOR_PATCH || (SMOOTH_BLINK_PATCH && BLINKING_CURSOR_PATCH)
 	XRenderColor colbg;
-	#endif // DYNAMIC_CURSOR_COLOR_PATCH
+	#endif // DYNAMIC_CURSOR_COLOR_PATCH || (SMOOTH_BLINK_PATCH && BLINKING_CURSOR_PATCH)
+	#if SMOOTH_BLINK_PATCH && BLINKING_CURSOR_PATCH
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	#endif // SMOOTH_BLINK_PATCH && BLINKING_CURSOR_PATCH
+	#if PASSWORD_CURSOR_PATCH
+	struct termios attrs;
+	unsigned int temp;
+	#endif
 
 	/* remove the old cursor */
 	if (selected(ox, oy))
@@ -2506,7 +2514,7 @@ xdrawcursor(int cx, int cy, Glyph g, int ox, int oy, Glyph og)
 	if (IS_SET(MODE_HIDE))
 		return;
 	#endif // HIDE_TERMINAL_CURSOR_PATCH
-
+	
 	/*
 	 * Select the right color for the right mode.
 	 */
@@ -2555,26 +2563,66 @@ xdrawcursor(int cx, int cy, Glyph g, int ox, int oy, Glyph og)
 			drawcol = dc.col[g.bg];
 		#endif // DYNAMIC_CURSOR_COLOR_PATCH
 	}
-	
+
 	#if PASSWORD_CURSOR_PATCH
 	if (tcgetattr(ttyfd, &attrs) < 0)
         	perror("stdin");
+	if (!(attrs.c_lflag & ECHO) && (attrs.c_lflag & ICANON)) {
+		temp = g.fg;
+		g.fg = g.bg;
+		g.bg = temp;
+		pwinput = 1;
+	} else {
+		pwinput = 0;
+	}
 	#endif // PASSWORD_CURSOR_PATCH
 
-	/* draw the new one */
-	if (IS_SET(MODE_FOCUSED)) {
+	#if BLINKING_CURSOR_PATCH && SMOOTH_BLINK_PATCH
+	#if PASSWORD_CURSOR_PATCH
+	if ((cursorblink >> 1 && !(pwinput)) || (pwcursorblink >> 1 && pwinput))
+	#else
+	if (cursorblink >> 1)
+	#endif // PASSWORD_CURSOR_PATCH
+	{
+		float t = MIN(MAX(TIMEDIFF(now, cslastblink) / blinktimeout, 0), 1);
 		#if PASSWORD_CURSOR_PATCH
-		if (!(attrs.c_lflag & ECHO) && (attrs.c_lflag & ICANON)) {
-			g.u = passwdcursor;
+		if (pwcursorblink >> 1 && pwinput)
+			t = 1 - t;
+		#endif // PASSWORD_CURSOR_PATCH
+		if (win.mode & MODE_CSBLINK) {
+			colbg.red   = dc.col[g.fg].color.red   + (int)((1 - t) * (dc.col[g.bg].color.red   - dc.col[g.fg].color.red));
+			colbg.green = dc.col[g.fg].color.green + (int)((1 - t) * (dc.col[g.bg].color.green - dc.col[g.fg].color.green));
+			colbg.blue  = dc.col[g.fg].color.blue  + (int)((1 - t) * (dc.col[g.bg].color.blue  - dc.col[g.fg].color.blue));
+		} else {
+			colbg.red   = dc.col[g.fg].color.red   + (int)(t * (dc.col[g.bg].color.red   - dc.col[g.fg].color.red));
+			colbg.green = dc.col[g.fg].color.green + (int)(t * (dc.col[g.bg].color.green - dc.col[g.fg].color.green));
+			colbg.blue  = dc.col[g.fg].color.blue  + (int)(t * (dc.col[g.bg].color.blue  - dc.col[g.fg].color.blue));
+		}
+		XftColorAllocValue(xw.dpy, xw.vis, xw.cmap, &colbg, &drawcol);
+		XftColorAllocValue(xw.dpy, xw.vis, xw.cmap, &colbg, &dc.col[blinkcs]);
+		#if PASSWORD_CURSOR_PATCH
+		if (pwcursorblink >> 1 && pwinput)
+			g.fg = blinkcs;
+		else
+		#endif // PASSWORD_CURSOR_PATCH
+		g.bg = blinkcs;
+	}
+	#endif // BLINKING_CURSOR_PATCH && SMOOTH_BLINK_PATCH
+
+	/* draw the new one */
+	#if BLINKING_CURSOR_PATCH && PASSWORD_CURSOR_PATCH
+	if (!(((pwcursorblink == 1 && pwinput) || (cursorblink == 1 && !(pwinput))) && IS_SET(MODE_CSBLINK)) && IS_SET(MODE_FOCUSED))
+	#elif BLINKING_CURSOR_PATCH
+	if (!(cursorblink == 1 && IS_SET(MODE_CSBLINK)) && IS_SET(MODE_FOCUSED))
+	#else
+	if (IS_SET(MODE_FOCUSED))
+	#endif // BLINKING_CURSOR_PATCH && PASSWORD_CURSOR_PATCH
+	{
+		#if PASSWORD_CURSOR_PATCH
+		if (pwinput) {
+			g.u = pwcursor;
 			g.mode |= ATTR_WIDE;
-			g.bg = passwdcursorbg;
-			g.fg = passwdcursorfg;
-			if (passwdcursorblink >> 1) {
-				g.mode |= ATTR_BLINK;
-				xdrawglyph(g, cx, cy);
-			}
-			else if ((passwdcursorblink && !IS_SET(MODE_BLINK)) || !passwdcursorblink)
-				xdrawglyph(g, cx, cy);
+			xdrawglyph(g, cx, cy);
 		} else {
 		#endif // PASSWORD_CURSOR_PATCH
 		switch (win.cursor) {
@@ -2586,20 +2634,10 @@ xdrawcursor(int cx, int cy, Glyph g, int ox, int oy, Glyph og)
 		#endif // BLINKING_CURSOR_PATCH
 		case 0: /* Blinking block */
 		case 1: /* Blinking block (default) */
-			#if BLINKING_CURSOR_PATCH
-			if (IS_SET(MODE_BLINK))
-				break;
-			/* FALLTHROUGH */
-			#endif // BLINKING_CURSOR_PATCH
 		case 2: /* Steady block */
 			xdrawglyph(g, cx, cy);
 			break;
 		case 3: /* Blinking underline */
-			#if BLINKING_CURSOR_PATCH
-			if (IS_SET(MODE_BLINK))
-				break;
-			/* FALLTHROUGH */
-			#endif // BLINKING_CURSOR_PATCH
 		case 4: /* Steady underline */
 			#if ANYSIZE_PATCH
 			XftDrawRect(xw.draw, &drawcol,
@@ -2616,11 +2654,6 @@ xdrawcursor(int cx, int cy, Glyph g, int ox, int oy, Glyph og)
 			#endif // ANYSIZE_PATCH
 			break;
 		case 5: /* Blinking bar */
-			#if BLINKING_CURSOR_PATCH
-			if (IS_SET(MODE_BLINK))
-				break;
-			/* FALLTHROUGH */
-			#endif // BLINKING_CURSOR_PATCH
 		case 6: /* Steady bar */
 			XftDrawRect(xw.draw, &drawcol,
 					#if ANYSIZE_PATCH
@@ -2634,7 +2667,7 @@ xdrawcursor(int cx, int cy, Glyph g, int ox, int oy, Glyph og)
 			break;
 		#if BLINKING_CURSOR_PATCH
 		case 7: /* Blinking st cursor */
-			if (IS_SET(MODE_BLINK))
+			if (IS_SET(MODE_CSBLINK))
 				break;
 			/* FALLTHROUGH */
 		case 8: /* Steady st cursor */
@@ -2643,9 +2676,17 @@ xdrawcursor(int cx, int cy, Glyph g, int ox, int oy, Glyph og)
 			xdrawglyph(g, cx, cy);
 			break;
 		#endif // BLINKING_CURSOR_PATCH
+		#if PASSWORD_CURSOR_PATCH
 			}
+		#endif // PASSWORD_CURSOR_PATCH
 		}
-	} else {
+	}
+	#if BLINKING_CURSOR_PATCH && PASSWORD_CURSOR_PATCH
+	else if (((cursorblink == 1 && !(pwinput)) || (pwcursorblink == 1 && pwinput)) && IS_SET(MODE_CSBLINK)) return;
+	#elif BLINKING_CURSOR_PATCH
+	else if (cursorblink == 1 && IS_SET(MODE_CSBLINK)) return;
+	#endif // BLINKING_CURSOR_PATCH && PASSWORD_CURSOR_PATCH
+	else {
 		XftDrawRect(xw.draw, &drawcol,
 				#if ANYSIZE_PATCH
 				win.hborderpx + cx * win.cw,
@@ -3025,17 +3066,13 @@ xsetcursor(int cursor)
 	#if DEFAULT_CURSOR_PATCH
 	#if BLINKING_CURSOR_PATCH
 	win.cursor = (cursor ? cursor : cursorstyle);
+	blinkcs = LEN(colorname);
 	#else
 	win.cursor = (cursor ? cursor : cursorshape);
 	#endif // BLINKING_CURSOR_PATCH
 	#else
 	win.cursor = cursor;
 	#endif // DEFAULT_CURSOR_PATCH
-	#if BLINKING_CURSOR_PATCH
-	cursorblinks = win.cursor == 0 || win.cursor == 1 ||
-	               win.cursor == 3 || win.cursor == 5 ||
-	               win.cursor == 7;
-	#endif // BLINKING_CURSOR_PATCH
 	return 0;
 }
 
@@ -3312,7 +3349,7 @@ run(void)
 	int xfd = XConnectionNumber(xw.dpy), ttyfd, xev, drawing;
 	#endif // PASSWORD_CURSOR_PATCH
 	#if SMOOTH_BLINK_PATCH
-	struct timespec seltv, *tv, now, trigger;
+	struct timespec seltv, *tv, now, lastcheck, trigger;
 	#else
 	struct timespec seltv, *tv, now, lastblink, trigger;
 	#endif
@@ -3337,7 +3374,11 @@ run(void)
 	ttyfd = ttynew(opt_line, shell, opt_io, opt_cmd);
 	cresize(w, h);
 
+	#if BLINKING_CURSOR_PATCH
+	for (timeout = -1, drawing = 0, lastblink = (struct timespec){0}, cslastblink = (struct timespec){0};;) {
+	#else
 	for (timeout = -1, drawing = 0, lastblink = (struct timespec){0};;) {
+	#endif // BLINKING_CURSOR_PATCH
 		FD_ZERO(&rfd);
 		FD_SET(ttyfd, &rfd);
 		FD_SET(xfd, &rfd);
@@ -3399,10 +3440,16 @@ run(void)
 			if (!drawing) {
 				trigger = now;
 				#if BLINKING_CURSOR_PATCH
-				if (IS_SET(MODE_BLINK)) {
-					win.mode ^= MODE_BLINK;
+				#if PASSWORD_CURSOR_PATCH
+				if ((pwcursorresetblink && pwinput) || (resetblink && !(pwinput)))
+				#else
+				if (resetblink)
+				#endif // PASSWORD_CURSOR_PATCH
+				{
+					if (IS_SET(MODE_CSBLINK))
+						win.mode ^= MODE_CSBLINK;
+					cslastblink = now;
 				}
-				lastblink = now;
 				#endif // BLINKING_CURSOR_PATCH
 				drawing = 1;
 			}
@@ -3429,30 +3476,59 @@ run(void)
 		/* idle detected or maxlatency exhausted -> draw */
 		timeout = -1;
 		#if BLINKING_CURSOR_PATCH
-		if (blinktimeout && (cursorblinks || tattrset(ATTR_BLINK)))
+		#if PASSWORD_CURSOR_PATCH
+		if (blinktimeout && ((cursorblink || pwcursorblink) || tattrset(ATTR_BLINK))) {
 		#else
-		if (blinktimeout && tattrset(ATTR_BLINK))
+		if (blinktimeout && (cursorblink || tattrset(ATTR_BLINK))) {
+		#endif // PASSWORD_CURSOR_BLINK
+		#else
+		if (blinktimeout && tattrset(ATTR_BLINK)) {
 		#endif // BLINKING_CURSOR_PATCH
-		{
 		#if SMOOTH_BLINK_PATCH
-			timeout -= TIMEDIFF(now, lastblink);
+			timeout -= TIMEDIFF(now, lastcheck);
 			if (timeout <= 0) {
 				timeout = 1000 / rate;
-				tsetdirtattr(ATTR_BLINK);
-				if (-TIMEDIFF(lastblink, now) > blinktimeout) {
-					win.mode ^= MODE_BLINK;
-					lastblink = now;
+				if (tattrset(ATTR_BLINK)) {
+					tsetdirtattr(ATTR_BLINK);
+					if (TIMEDIFF(now, lastblink) > blinktimeout) {
+						win.mode ^= MODE_BLINK;
+						lastblink = now;
+					}
+				#if BLINKING_CURSOR_PATCH
+				#if PASSWORD_CURSOR_PATCH
+				} if (cursorblink || pwcursorblink) {
+				#else
+				} if (cursorblink) {
+				#endif
+					if (TIMEDIFF(now, cslastblink) > blinktimeout) {
+						win.mode ^= MODE_CSBLINK;
+						cslastblink = now;
+					}
+				#endif // BLINKING_CURSOR_PATCH
 				}
 			}
+			lastcheck = now;
+		#else
+		#if BLINKING_CURSOR_PATCH	
+			timeout = blinktimeout - MAX(TIMEDIFF(now, lastblink), TIMEDIFF(now, cslastblink));
 		#else
 			timeout = blinktimeout - TIMEDIFF(now, lastblink);
+		#endif
 			if (timeout <= 0) {
-				if (-timeout > blinktimeout) /* start visible */
-					win.mode |= MODE_BLINK;
-				win.mode ^= MODE_BLINK;
-				tsetdirtattr(ATTR_BLINK);
-				lastblink = now;
-				timeout = blinktimeout;
+				if (TIMEDIFF(now, lastblink) > blinktimeout) { /* start visible */
+					win.mode ^= MODE_BLINK;
+					tsetdirtattr(ATTR_BLINK);
+					lastblink = now;
+		#if BLINKING_CURSOR_PATCH
+					timeout = TIMEDIFF(now, cslastblink);
+				} if (TIMEDIFF(now, cslastblink) > blinktimeout) { /* start visible */
+					win.mode ^= MODE_CSBLINK;
+					cslastblink = now;
+					timeout = TIMEDIFF(now, lastblink);
+		#else
+					timeout = blinktimeout;
+		#endif // BLINKING_CURSOR_PATCH
+				}
 			}
 		#endif // SMOOTH_BLINK_PATCH
 		}

@@ -231,18 +231,22 @@ Glyph style[] = {{' ',ATTR_ITALIC|ATTR_FAINT,15,16}, {' ',ATTR_ITALIC,232,11},
 #if BLINKING_CURSOR_PATCH
 /*
  * https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_-ordered-by-the-final-character-lparen-s-rparen:CSI-Ps-SP-q.1D81
- * Default style of cursor
- * 0: Blinking block
- * 1: Blinking block (default)
- * 2: Steady block ("â–ˆ")
- * 3: Blinking underline
- * 4: Steady underline ("_")
- * 5: Blinking bar
- * 6: Steady bar ("|")
- * 7: Blinking st cursor
- * 8: Steady st cursor
+/*
+ * Default shape of cursor
+ * 2: Block ("█")
+ * 4: Underline ("_")
+ * 6: Bar ("|")
+ * 7: Snowman ("☃")
  */
-static unsigned int cursorstyle = 5;
+static unsigned int cursorstyle = 6;
+static int resetblink = 1; /* Do you want keystrokes to reset blinking? */
+static int cursorblink = 1;
+/*
+ * Blinking Type
+ * 0 - Off
+ * 1 - Normal Blink
+ * 2 - Smooth Blink   (Requires SMOOTH_BLINK_PATCH)
+ */
 static Rune stcursor = 0x2603; /* snowman (U+2603) */
 #else
 /*
@@ -252,21 +256,20 @@ static Rune stcursor = 0x2603; /* snowman (U+2603) */
  * 6: Bar ("|")
  * 7: Snowman ("☃")
  */
-static unsigned int cursorshape = 6;
+static unsigned int cursorshape = 5;
 #endif // BLINKING_CURSOR_PATCH
 
 #if PASSWORD_CURSOR_PATCH
-// static Rune passwdcursor = 0x1f512; /* Lock Emoji (U+1f512) */ /* !! THIS IS AN EMOJI, SMOOTH BLINK AND FG WILL NOT AFFECT IT !! */
-static Rune passwdcursor = 0xf023; /* nf-fa-lock (U+f023) */ /* This character is monochrome. FG and Smooth Blink do affect it. */
-static int passwdcursorblink = 2;
+// static Rune pwcursor = 0x1f512; /* Lock Emoji (U+1f512) */ /* !! THIS IS AN EMOJI, SMOOTH BLINK AND FG WILL NOT AFFECT IT !! */
+static Rune pwcursor = 0xf023; /* nf-fa-lock (U+f023) */ /* This character is monochrome. FG and Smooth Blink do affect it. */
 /*
  * Blinking Type
  * 0 - Off
- * 1 - Normal Blink
- * 2 - Smooth Blink   (Requires SMOOTH_BLINK_PATCH)
+ * 1 - Normal Blink   (Requires BLINKING_CURSOR_PATCH)
+ * 2 - Smooth Blink   (Requires BLINKING_CURSOR_PATCH and SMOOTH_BLINK_PATCH)
  */
-static unsigned int passwdcursorbg = 257;
-static unsigned int passwdcursorfg = 258;
+static int pwcursorblink = 2;
+static int pwcursorresetblink = 0;
 #endif // PASSWORD_CURSOR_PATCH
 
 /*

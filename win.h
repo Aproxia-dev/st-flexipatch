@@ -27,6 +27,9 @@ enum win_mode {
 	#if KEYBOARDSELECT_PATCH
 	MODE_KBDSELECT   = 1 << 19,
 	#endif // KEYBOARDSELECT_PATCH
+	#if BLINKING_CURSOR_PATCH
+	MODE_CSBLINK     = 1 << 20,
+	#endif // BLINKING_CURSOR_PATCH
 };
 
 void xbell(void);
