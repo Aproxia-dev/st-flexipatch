@@ -9,7 +9,7 @@ static char *font = "JetBrainsMono Nerd Font Mono:pixelsize=13:antialias=true:au
 #if FONT2_PATCH
 /* Spare fonts */
 static char *font2[] = {
-	"Twemoji:pixelsize=13:antialias=true:autohint=true",
+	"Blobmoji:pixelsize=13:antialias=true:autohint=true",
 /*	"Hack Nerd Font Mono:pixelsize=11:antialias=true:autohint=true", */
 };
 #endif // FONT2_PATCH
