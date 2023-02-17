@@ -19,6 +19,7 @@ static char *features[] = {
 	"cv91=1",
 	"VXLA=1",
 };
+#endif // LIGATURES_PATCH
 
 #if BACKGROUND_IMAGE_PATCH
 /*
