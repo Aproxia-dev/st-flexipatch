@@ -67,16 +67,15 @@ hbtransform(XftGlyphFontSpec *specs, const Glyph *glyphs, size_t len, int x, int
 	hb_codepoint_t *codepoints = calloc((unsigned int)len, sizeof(hb_codepoint_t));
 	
 	for (int i = 0; i < (LEN(features) - 1); i++) {
-		hbfeatures[i] = {
-			.tag   = HB_TAG(features[i][0], features[i][1], features[i][2], features[i][3])
-			if (features[i][4] == '=') {
-				.value = atoi(features[i][5]);
-			} else {
-				.value = 1;
-			}
-			.start = HB_FEATURE_GLOBAL_START;
-			.end   = HB_FEATURE_GLOBAL_END;
-		};
+		hbfeatures[i].tag   = HB_TAG(features[i][0], features[i][1], features[i][2], features[i][3])
+		if (features[i][4] == '=') {
+			hbfeatures[i].value = atoi(features[i][5]);
+		} else {
+			hbfeatures[i].value = 1;
+		}
+		hbfeatures[i].start = HB_FEATURE_GLOBAL_START;
+		hbfeatures[i].end   = HB_FEATURE_GLOBAL_END;
+		
 	}
 
 	for (int idx = 1, specidx = 1; idx < len; idx++) {
