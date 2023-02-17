@@ -69,7 +69,7 @@ hbtransform(XftGlyphFontSpec *specs, const Glyph *glyphs, size_t len, int x, int
 	for (int i = 0; i < (LEN(features) - 1); i++) {
 		hbfeatures[i].tag   = HB_TAG(features[i][0], features[i][1], features[i][2], features[i][3]);
 		if (features[i][4] == '=') {
-			hbfeatures[i].value = atoi(features[i][5]);
+			hbfeatures[i].value = atoi(&features[i][5]);
 		} else {
 			hbfeatures[i].value = 1;
 		}
