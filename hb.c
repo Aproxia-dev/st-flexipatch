@@ -25,7 +25,7 @@ static HbFontMatch *hbfontcache = NULL;
 
 hb_feature_t hbfeatures[LEN(features)];
 
-for (int i = 0; i < LEN(features) - 1; i++) {
+for (int i = 0; i < (LEN(features) - 1); i++) {
 	hbfeatures[i] = {
 		.tag   = HB_TAG(features[i][0], features[i][1], features[i][2], features[i][3])
 		if (features[i][4] == '=') {
