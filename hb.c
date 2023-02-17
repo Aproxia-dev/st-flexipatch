@@ -8,8 +8,9 @@
 #include <hb-ft.h>
 
 #include "st.h"
+#include "config.h"
 
-#define FEATURE(c1,c2,c3,c4) { .tag = HB_TAG(c1,c2,c3,c4), .value = 1, .start = HB_FEATURE_GLOBAL_START, .end = HB_FEATURE_GLOBAL_END }
+#define LEN(arr) (*(&arr + 1) - arr)
 
 void hbtransformsegment(XftFont *xfont, const Glyph *string, hb_codepoint_t *codepoints, int start, int length);
 hb_font_t *hbfindfont(XftFont *match);
@@ -22,12 +23,20 @@ typedef struct {
 static int hbfontslen = 0;
 static HbFontMatch *hbfontcache = NULL;
 
-/*
- * Poplulate the array with a list of font features, wrapped in FEATURE macro,
- * e. g.
- * FEATURE('c', 'a', 'l', 't'), FEATURE('d', 'l', 'i', 'g')
- */
-hb_feature_t features[] = { };
+hb_feature_t hbfeatures[LEN(features)];
+
+for (int i = 0; i < LEN(features) - 1; i++) {
+	hbfeatures[i] = {
+		.tag   = HB_TAG(features[i][0], features[i][1], features[i][2], features[i][3])
+		if (features[i][4] == '=') {
+			.value = atoi(features[i][5]);
+		} else {
+			.value = 1;
+		}
+		.start = HB_FEATURE_GLOBAL_START;
+		.end   = HB_FEATURE_GLOBAL_END;
+	};
+}
 
 void
 hbunloadfonts()
@@ -138,7 +147,7 @@ hbtransformsegment(XftFont *xfont, const Glyph *string, hb_codepoint_t *codepoin
 	}
 
 	/* Shape the segment. */
-	hb_shape(font, buffer, features, sizeof(features)/sizeof(hb_feature_t));
+	hb_shape(font, buffer, hbfeatures, sizeof(hbfeatures)/sizeof(hb_feature_t));
 
 	/* Get new glyph info. */
 	hb_glyph_info_t *info = hb_buffer_get_glyph_infos(buffer, NULL);

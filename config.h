@@ -5,7 +5,7 @@
  *
  * font: see http://freedesktop.org/software/fontconfig/fontconfig-user.html
  */
-static char *font = "JetBrainsMono Nerd Font Mono:pixelsize=13:antialias=true:autohint=true";
+static char *font = "Iosevka Nerd Font Mono:pixelsize=13:antialias=true:autohint=true";
 #if FONT2_PATCH
 /* Spare fonts */
 static char *font2[] = {
@@ -13,6 +13,12 @@ static char *font2[] = {
 /*	"Hack Nerd Font Mono:pixelsize=11:antialias=true:autohint=true", */
 };
 #endif // FONT2_PATCH
+#if LIGATURES_PATCH
+static char *features[] = {
+	"ss14",
+	"cv91=1",
+	"VXLA=1",
+};
 
 #if BACKGROUND_IMAGE_PATCH
 /*
