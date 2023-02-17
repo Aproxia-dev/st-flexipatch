@@ -10,8 +10,6 @@
 #include "st.h"
 #include "config.h"
 
-#define LEN(arr) (*(&arr + 1) - arr)
-
 void hbtransformsegment(XftFont *xfont, const Glyph *string, hb_codepoint_t *codepoints, int start, int length);
 hb_font_t *hbfindfont(XftFont *match);
 
