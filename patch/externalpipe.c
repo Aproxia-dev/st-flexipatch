@@ -1,5 +1,3 @@
-int extpipeactive = 0;
-
 void
 #if EXTERNALPIPEIN_PATCH
 extpipe(const Arg *arg, int in)
@@ -42,7 +40,11 @@ externalpipe(const Arg *arg)
 	newline = 0;
 	for (n = 0; n < term.row; n++) {
 		bp = term.line[n];
+		#if REFLOW_PATCH
+		lastpos = MIN(tlinelen(TLINE(n)) + 1, term.col) - 1;
+		#else
 		lastpos = MIN(tlinelen(n) + 1, term.col) - 1;
+		#endif // REFLOW_PATCH
 		if (lastpos < 0)
 			break;
 		end = &bp[lastpos + 1];
@@ -60,7 +62,6 @@ externalpipe(const Arg *arg)
 	close(to[1]);
 	/* restore */
 	signal(SIGPIPE, oldsigpipe);
-	extpipeactive = 1;
 }
 
 #if EXTERNALPIPEIN_PATCH

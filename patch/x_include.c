@@ -8,6 +8,9 @@
 #if BOXDRAW_PATCH
 #include "boxdraw.c"
 #endif
+#if DRAG_AND_DROP_PATCH
+#include "drag-n-drop.c"
+#endif
 #if OPENCOPIED_PATCH
 #include "opencopied.c"
 #endif
@@ -23,8 +26,20 @@
 #if INVERT_PATCH
 #include "invert.c"
 #endif
-#if KEYBOARDSELECT_PATCH
+#if REFLOW_PATCH && KEYBOARDSELECT_PATCH
+#include "keyboardselect_reflow_x.c"
+#elif KEYBOARDSELECT_PATCH
 #include "keyboardselect_x.c"
+#endif
+#if NETWMICON_PATCH
+#include "netwmicon.c"
+#elif NETWMICON_FF_PATCH
+#include "netwmicon_ff.c"
+#elif NETWMICON_LEGACY_PATCH
+#include "netwmicon_legacy.c"
+#endif
+#if OPEN_SELECTED_TEXT_PATCH
+#include "openselectedtext.c"
 #endif
 #if OPENURLONCLICK_PATCH
 #include "openurlonclick.c"
@@ -32,12 +47,12 @@
 #if RIGHTCLICKTOPLUMB_PATCH
 #include "rightclicktoplumb_x.c"
 #endif
-#if SIXEL_PATCH
-#include "sixel_x.c"
-#endif
 #if ST_EMBEDDER_PATCH
 #include "st_embedder_x.c"
 #endif
 #if XRESOURCES_PATCH
 #include "xresources.c"
+#endif
+#if OSC133_PATCH
+#include "osc133.c"
 #endif
