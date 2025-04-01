@@ -213,9 +213,10 @@ static const char *colorname[] = {
 	"#8fbcbb",
 	"#dee1e6",
 
-[256] = "#b6beca", /* default foreground colour */
-[257] = "#171a1f", /* default background colour */
-[258] = "#b6beca", /*575268*/
+[256] = "#b6beca", /* default cursor colour */
+[257] = "#171a1f", /* reverse cursor colour */
+[258] = "#b6beca", /* default foreground colour */
+[259] = "#171a1f", /* default background colour */
 };
 
 
@@ -227,8 +228,11 @@ static const char *colorname[] = {
 unsigned int defaultbg = 0;
 unsigned int bg = 17, bgUnfocused = 16;
 #else
-unsigned int defaultbg = 257;
+unsigned int defaultbg = 259;
 #endif // ALPHA_FOCUS_HIGHLIGHT_PATCH
+unsigned int defaultfg = 258;
+unsigned int defaultcs = 256;
+unsigned int defaultrcs = 257;
 #if SELECTION_COLORS_PATCH
 unsigned int selectionfg = 258;
 unsigned int selectionbg = 259;

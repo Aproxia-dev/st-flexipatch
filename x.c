@@ -2079,7 +2079,6 @@ xdrawglyphfontspecs(const XftGlyphFontSpec *specs, Glyph base, int len, int x, i
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
 	#endif // SMOOTH_BLINK_PATCH
-	int width = charlen * win.cw;
 	Color *fg, *bg, *temp, revfg, revbg, truefg, truebg;
 	XRenderColor colfg, colbg;
 	XRectangle r;
